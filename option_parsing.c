@@ -37,6 +37,9 @@ void print_help(FILE *stream, const char *appname) {
 		"  -P PORT --port PORT   set the tcp port number of the MQTT broker\n"
 		"  -K SECONDS --keep-alive SECONDS\n"
 		"                        set the MQTT keepalive interval\n"
+		"  -C CLIENT_ID --client-id CLIENT_ID\n"
+		"                        Specifies the client ID to use. If not given, a\n"
+		"                        client ID will be randomly generated.\n"
 		"  -T SECONDS --meta-timeout SECONDS\n"
 		"                        the number of seconds to wait for subscriptions\n"
 		"                        to 'meta' topics to return. Defaults to 1.\n"
@@ -75,10 +78,6 @@ void print_help(FILE *stream, const char *appname) {
 		"                            set      One-to-Many Property\n"
 		"                            watch    Many-to-One Event\n"
 		"                            send     One-to-Many Event\n"
-		"  -C CLIENT_ID --client-id CLIENT_ID\n"
-		"                        When -r is given, specifies the client ID to\n"
-		"                        use. If not given, a client ID will be\n"
-		"                        randomly generated.\n"
 		"  -d DESCRIPTION --description DESCRIPTION\n"
 		"                        When -r is given, specifies the description of\n"
 		"                        the topic registered.\n"
@@ -121,6 +120,7 @@ options_t argparse(int argc, char *argv[]) {
 		"localhost",  // mqtt_port
 		1883,  // mqtt_port
 		10,  // mqtt_keep_alive
+		NULL,  // client_id
 		1000,  // meta_timeout
 		1000,  // property_timeout
 		0,  // event_timeout
@@ -129,7 +129,6 @@ options_t argparse(int argc, char *argv[]) {
 		JSON_FORMAT_SINGLE_LINE,  // json_format
 		false,  // force
 		false,  // register_topic
-		NULL,  // client_id
 		"Created on the command-line.",  // description
 		NULL,  // on_unregister
 		false,  // delete_on_unregister
@@ -211,6 +210,10 @@ options_t argparse(int argc, char *argv[]) {
 				opts.mqtt_keep_alive = atoi(optarg);
 				break;
 			
+			case 'C':  // --client-id
+				opts.client_id = optarg;
+				break;
+			
 			case 'T':  // --meta-timeout
 				opts.meta_timeout = 1000 * atof(optarg);
 				break;
@@ -281,7 +284,7 @@ options_t argparse(int argc, char *argv[]) {
 					ARGPARSE_ERROR("'--on-unregister' can only be used with "
 					               "get, set, watch or send.");
 				}
-				char *err = json_validate(optarg);
+				char *err = json_validate(optarg, -1);
 				if (err) {
 					ARGPARSE_ERRORF("'--on-unregister' must be valid JSON: %s", err);
 					free(err);  // XXX: Not reached since ARGPARSE_ERROR* calls exit()...
@@ -331,9 +334,6 @@ options_t argparse(int argc, char *argv[]) {
 	if (opts.on_unregister && opts.delete_on_unregister) {
 		ARGPARSE_ERROR("'--delete-on-unregister' and '--delete-on-unregister' "
 		               "cannot be used at the same time.");
-	}
-	if (opts.ls_recursive && opts.ls_format == LS_FORMAT_JSON) {
-		ARGPARSE_ERROR("'--recursive' and '--json' cannot be used at the same time.");
 	}
 	
 	// Check that the topic was supplied
@@ -395,7 +395,7 @@ options_t argparse(int argc, char *argv[]) {
 	
 	// Verify any JSON value passed in
 	if (opts.value_source == VALUE_SOURCE_ARG) {
-		char *err = json_validate(opts.value);
+		char *err = json_validate(opts.value, -1);
 		if (err) {
 			ARGPARSE_ERRORF("VALUE must be valid JSON: %s", err);
 			free(err);  // XXX: Not reached since ARGPARSE_ERROR* calls exit()...

@@ -131,25 +131,25 @@ char *annotate_error(const char *str, size_t offset, const char *message) {
 // JSON utilities
 ////////////////////////////////////////////////////////////////////////////////
 
-
 /**
- * Validate the supplied JSON string, returning a human-readable error message
+ * Parse the supplied JSON string, returning a human-readable error message
  * if the string is not valid and NULL otherwise. The caller must free any
- * string returned.
+ * string returned. The parsed JSON is returned via the obj argument.
  */
-char *json_validate(const char *str) {
+char *json_parse(const char *str, int len, json_object **obj) {
+	if (len < 0) {
+		len = strlen(str);
+	}
+	
 	// Parse the string and see what happens
 	json_tokener *tokener = json_tokener_new();
-	json_object *json = json_tokener_parse_ex(tokener, str, -1);
-	if (json) {
-		json_object_put(json);
-	}
+	*obj = json_tokener_parse_ex(tokener, str, len);
 	enum json_tokener_error err = json_tokener_get_error(tokener);
 	
 	const char *err_message = json_tokener_error_desc(err);
 	size_t err_offset = tokener->char_offset;
 	
-	if (err == json_tokener_success && tokener->char_offset == strlen(str)) {
+	if (err == json_tokener_success && tokener->char_offset == len) {
 		// Parsed the whole string with success, JSON is valid!
 		json_tokener_free(tokener);
 		return NULL;
@@ -163,12 +163,25 @@ char *json_validate(const char *str) {
 }
 
 /**
+ * Validate the supplied JSON string, returning a human-readable error message
+ * if the string is not valid and NULL otherwise. The caller must free any
+ * string returned.
+ */
+char *json_validate(const char *str, int len) {
+	json_object *obj;
+	char *err = json_parse(str, len, &obj);
+	if (obj) {
+		json_object_put(obj);
+	}
+	return err;
+}
+
+/**
  * Given a JSON string, return the same string formatted according to a JSON-C
  * formatting constant. The returned string is in malloc-managed memory and
- * must be freed by the caller. Returns NULL if the input string is not valid
- * JSON.
+ * must be freed by the caller.
  */
-char *json_to_format(const char *in_str, int format) {
+char *json_reformat(const char *in_str, int format) {
 	json_object *json = json_tokener_parse(in_str);
 	const char *one_liner = json_object_to_json_string_ext(json, format);
 	
@@ -182,19 +195,24 @@ char *json_to_format(const char *in_str, int format) {
 }
 
 /**
- * Given a JSON string, return the same string formatted as compactly as
- * possible (on one line). The caller must free the allocated string with
- * 'free'.
+ * Given a JSON string, return the same string formatted in the relevant style.
+ * The caller must free the allocated string with 'free' afterwards.
  */
-char *json_to_one_line(const char *in_str) {
-	return json_to_format(in_str, JSON_C_TO_STRING_PLAIN);
+char *json_to_format(const char *in_str, json_format_t json_format) {
+	switch (json_format) {
+		case JSON_FORMAT_SINGLE_LINE:
+			return json_reformat(in_str, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOZERO);
+		
+		case JSON_FORMAT_PRETTY:
+			return json_reformat(in_str, JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOZERO);
+		
+		case JSON_FORMAT_VERBATIM:
+			return alloced_copy(in_str);
+		
+		case JSON_FORMAT_QUIET:
+			return alloced_copy("");
+	}
+	// Should not reach here!
+	return NULL;
+	
 }
-
-/**
- * Given a JSON string, return the same string pretty-printed. The caller must
- * free the allocated string with 'free' afterwards.
- */
-char *json_to_pretty(const char *in_str) {
-	return json_to_format(in_str, JSON_C_TO_STRING_PRETTY);
-}
-

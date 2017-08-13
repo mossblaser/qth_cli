@@ -3,6 +3,9 @@
 
 #include <stdbool.h>
 
+#include "json.h"
+#include "MQTTClient.h"
+
 #define VERSION_STRING "v0.1"
 
 // The type of command entered on the command line.
@@ -49,6 +52,9 @@ typedef struct {
 	int mqtt_port;
 	int mqtt_keep_alive;  // (seconds)
 	
+	// Client ID to use.
+	char *client_id;
+	
 	// Qth meta access timeout (ms)
 	int meta_timeout;
 	
@@ -68,9 +74,6 @@ typedef struct {
 	
 	// Should the topic type be registered with the Qth registrar
 	bool register_topic;
-	
-	// Client ID to use or NULL if it should be generated randomly.
-	char *client_id;
 	
 	// Description to use when registering a topic.
 	char *description;
@@ -102,8 +105,25 @@ typedef struct {
 
 options_t argparse(int argc, char *argv[]);
 
-char *json_validate(const char *str);
-char *json_to_one_line(const char *in_str);
-char *json_to_pretty(const char *in_str);
+char *json_parse(const char *str, int len, json_object **obj);
+char *json_validate(const char *str, int len);
+char *json_to_format(const char *in_str, json_format_t json_format);
+
+char *alloced_copy(const char *str);
+char *alloced_copyn(const char *str, size_t len);
+char *alloced_cat(const char *a, const char *b);
+
+bool qth_is_directory_listing(json_object *dir);
+const char **qth_subdirectory_get_behaviours(json_object *dir, const char *subpath);
+bool qth_subdirectory_has_behaviour(json_object *dir, const char *subpath, const char *behaviour);
+char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int meta_timeout);
+char *qth_set_property(MQTTClient *client, const char *topic, char *value, int timeout);
+
+int cmd_ls(MQTTClient *mqtt_client,
+           const char *path,
+           int meta_timeout,
+           bool ls_recursive,
+           ls_format_t ls_format,
+           json_format_t json_format);
 
 #endif
