@@ -180,8 +180,6 @@ int main(int argc, char *argv[]) {
 	
 	// Setup a will to unregister the client, if required.
 	if (opts.register_topic) {
-		
-		
 		mqtt_opts.will = &mqtt_will_opts;
 		mqtt_will_opts.topicName = registration_url;
 		mqtt_will_opts.message = "";
@@ -208,6 +206,21 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
+	// If automatic, work out what command is needed.
+	if (opts.cmd_type == CMD_TYPE_AUTO) {
+		int retval = cmd_auto(mqtt_client,
+	                        opts.topic,
+	                        &opts.value,
+	                        &opts.value_source,
+	                        &opts.cmd_type,
+	                        opts.meta_timeout);
+		if (retval != 0) {
+			return retval;
+		}
+		
+		// Don't make the command check the topic type a second time
+		opts.force = true;
+	}
 	
 	// Perform the requested operation.
 	int retval = 1;
@@ -219,6 +232,59 @@ int main(int argc, char *argv[]) {
 			                opts.ls_recursive,
 			                opts.ls_format,
 			                opts.json_format);
+			break;
+		
+		case CMD_TYPE_GET:
+			retval = cmd_get(mqtt_client,
+			                 opts.topic,
+			                 opts.json_format,
+			                 opts.register_topic,
+			                 opts.force,
+			                 opts.get_count,
+			                 opts.get_timeout,
+			                 opts.meta_timeout);
+			break;
+		
+		case CMD_TYPE_SET:
+			retval = cmd_set(mqtt_client,
+			                 opts.topic,
+			                 opts.value,
+			                 opts.register_topic,
+			                 opts.force,
+			                 opts.set_count,
+			                 opts.set_timeout,
+			                 opts.meta_timeout);
+			break;
+		
+		case CMD_TYPE_DELETE:
+			retval = cmd_delete(mqtt_client,
+			                    opts.topic,
+			                    opts.register_topic,
+			                    opts.force,
+			                    opts.set_timeout,
+			                    opts.meta_timeout);
+			break;
+		
+		case CMD_TYPE_WATCH:
+			retval = cmd_watch(mqtt_client,
+			                   opts.topic,
+			                   opts.json_format,
+			                   opts.register_topic,
+			                   opts.force,
+			                   opts.watch_count,
+			                   opts.watch_timeout,
+			                   opts.meta_timeout);
+			break;
+		
+		case CMD_TYPE_SEND:
+			retval = cmd_send(mqtt_client,
+			                  opts.topic,
+			                  opts.value,
+			                  opts.register_topic,
+			                  opts.force,
+			                  opts.send_count,
+			                  opts.send_timeout,
+			                  opts.meta_timeout);
 			break;
 		
 		default:

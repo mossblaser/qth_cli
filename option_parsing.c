@@ -44,24 +44,19 @@ void print_help(FILE *stream, const char *appname) {
 		"                        the number of seconds to wait for subscriptions\n"
 		"                        to 'meta' topics to return. Defaults to 1.\n"
 		"  -t SECONDS --timeout SECONDS\n"
-		"                        If TOPIC is a property, gives the number of \n"
-		"                        seconds to wait before the property value \n"
-		"                        arrives. Defaults to 1 in this case. If TOPIC\n"
-		"                        is an event, gives the maximum time between\n"
-		"                        event values being received.  Defaults to 0\n"
-		"                        meaning no timeout in this case.\n"
-		"  -c COUNT --count COUNT\n"
-		"                        If getting the value of a property or\n"
-		"                        directory, exits once the value is received\n"
-		"                        COUNT times. Defaults to 1 in this case. If\n"
-		"                        watching an event, watch COUNT occurrences of\n"
-		"                        the event before exiting. In this case defaults\n"
-		"                        to 0 (unlimited).\n"
-		"  -1                    An alias for --count=1\n"
+		"                        If setting or deleting a property or sending an\n"
+		"                        event, the number of seconds to wait for it to\n"
+		"                        be sent (default 1). If getting a property, the\n"
+		"                        number of seconds to wait for the value to\n"
+		"                        arrive (default 1, or 0 = wait forever if\n"
+		"                        --register is used). If watching an event, the\n"
+		"                        number of seconds to wait between each event\n"
+		"                        arrival (default 0 = wait forever).\n"
 		"  -p --pretty-print     pretty-print JSON values\n"
 		"  -v --verbatim         show JSON values as-received without changing\n"
 		"                        the formatting\n"
-		"  -q --quiet            do not output received values\n"
+		"  -q --quiet            do not output received values (output empty\n"
+		"                        lines instead)\n"
 		"\n"
 		"optional arguments when used with get, set, delete, watch or send:\n"
 		"  -f --force            Treat this topic as a property or event (for\n"
@@ -70,6 +65,15 @@ void print_help(FILE *stream, const char *appname) {
 		"                        registered.\n"
 		"\n"
 		"optional arguments when used with get, set, watch or send:\n"
+		"  -c COUNT --count COUNT\n"
+		"                        If getting the value of a property or\n"
+		"                        directory, exits once the value is received\n"
+		"                        COUNT times. Defaults to 1 in this case or 0\n"
+		"                        (unlimited) if --register is used. If\n"
+		"                        watching an event, watch COUNT occurrences of\n"
+		"                        the event before exiting. In this case defaults\n"
+		"                        to 0 (unlimited).\n"
+		"  -1                    An alias for --count=1\n"
 		"  -r --register         Register the topic with the Qth registrar. The\n"
 		"                        following type of registration will be used:\n"
 		"                            Command  Type Registered\n"
@@ -122,10 +126,15 @@ options_t argparse(int argc, char *argv[]) {
 		10,  // mqtt_keep_alive
 		NULL,  // client_id
 		1000,  // meta_timeout
-		1000,  // property_timeout
-		0,  // event_timeout
-		1,  // property_count
-		0,  // event_count
+		1000,  // get_timeout
+		1000,  // set_timeout
+		1000,  // delete_timeout
+		0,  // watch_timeout
+		1000,  // send_timeout
+		1,  // get_count;
+		1,  // set_count;
+		0,  // watch_count;
+		1,  // send_count;
 		JSON_FORMAT_SINGLE_LINE,  // json_format
 		false,  // force
 		false,  // register_topic
@@ -138,6 +147,21 @@ options_t argparse(int argc, char *argv[]) {
 		VALUE_SOURCE_NONE,  // value_source
 		NULL,  // value
 	};
+	
+	// The default timeout for 'get' varies depending on whether registration
+	// takes place or not. The appropriate choice is made later.
+	int get_unregistered_timeout = 1000;
+	int get_registered_timeout = 0;
+	
+	// Default values for 'count' will differ depending on whether the value
+	// comes from stdin or from an argument or whether the topic is being
+	// registered or not. The appropriate choice is made later...
+	int set_arg_count = 1;
+	int set_stdin_count = 0;
+	int send_arg_count = 1;
+	int send_stdin_count = 0;
+	int get_unregistered_count = 1;
+	int get_registered_count = 0;
 	
 	// Sanity check: Have some arguments
 	if (argc < 2) {
@@ -219,15 +243,51 @@ options_t argparse(int argc, char *argv[]) {
 				break;
 			
 			case 't':  // --timeout
-				opts.property_timeout = opts.event_timeout = 1000 * atof(optarg);
+				opts.set_timeout
+					= opts.delete_timeout
+					= opts.watch_timeout
+					= opts.send_timeout
+					= get_unregistered_timeout
+					= get_registered_timeout
+					= 1000 * atof(optarg);
 				break;
 			
 			case 'c':  // --count
-				opts.property_count = opts.event_count = atoi(optarg);
+				if (!(opts.cmd_type == CMD_TYPE_AUTO ||
+				      opts.cmd_type == CMD_TYPE_SET ||
+				      opts.cmd_type == CMD_TYPE_GET ||
+				      opts.cmd_type == CMD_TYPE_WATCH ||
+				      opts.cmd_type == CMD_TYPE_SEND)) {
+					ARGPARSE_ERROR("'--count' can only be used with "
+					               "get, set, watch or send.");
+				}
+				opts.watch_count
+					= get_unregistered_count
+					= get_registered_count
+					= set_arg_count
+					= set_stdin_count
+					= send_arg_count
+					= send_stdin_count
+					= atoi(optarg);
 				break;
 			
-			case '1':  // --count
-				opts.property_count = opts.event_count = 1;
+			case '1':  // -1
+				if (!(opts.cmd_type == CMD_TYPE_AUTO ||
+				      opts.cmd_type == CMD_TYPE_SET ||
+				      opts.cmd_type == CMD_TYPE_GET ||
+				      opts.cmd_type == CMD_TYPE_WATCH ||
+				      opts.cmd_type == CMD_TYPE_SEND)) {
+					ARGPARSE_ERROR("'-1' can only be used with "
+					               "get, set, watch or send.");
+				}
+				opts.watch_count
+					= get_unregistered_count
+					= get_registered_count
+					= set_arg_count
+					= set_stdin_count
+					= send_arg_count
+					= send_stdin_count
+					= 1;
 				break;
 			
 			case 'p':  // --pretty-print
@@ -377,6 +437,7 @@ options_t argparse(int argc, char *argv[]) {
 		case CMD_TYPE_SEND:
 			if (optind >= argc) {
 				opts.value_source = VALUE_SOURCE_NULL;
+				opts.value = "null";
 			} else if (strcmp(argv[optind], "-") == 0) {
 				opts.value_source = VALUE_SOURCE_STDIN;
 				optind++;
@@ -391,6 +452,27 @@ options_t argparse(int argc, char *argv[]) {
 			// Other commands don't expect a value argument
 			opts.value_source = VALUE_SOURCE_NONE;
 			break;
+	}
+	
+	switch (opts.value_source) {
+		default:
+		case VALUE_SOURCE_ARG:
+		case VALUE_SOURCE_NULL:
+			opts.set_count = set_arg_count;
+			opts.send_count = send_arg_count;
+			break;
+		
+		case VALUE_SOURCE_STDIN:
+			opts.set_count = set_stdin_count;
+			opts.send_count = send_stdin_count;
+			break;
+	}
+	if (opts.register_topic) {
+		opts.get_count = get_registered_count;
+		opts.get_timeout = get_registered_timeout;
+	} else {
+		opts.get_count = get_unregistered_count;
+		opts.get_timeout = get_unregistered_timeout;
 	}
 	
 	// Verify any JSON value passed in

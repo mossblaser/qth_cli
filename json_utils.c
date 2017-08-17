@@ -146,14 +146,17 @@ char *json_parse(const char *str, int len, json_object **obj) {
 	*obj = json_tokener_parse_ex(tokener, str, len);
 	enum json_tokener_error err = json_tokener_get_error(tokener);
 	
+	bool success = (err == json_tokener_success ||
+	                       (json_tokener_continue && obj != NULL));
+	
 	const char *err_message = json_tokener_error_desc(err);
 	size_t err_offset = tokener->char_offset;
 	
-	if (err == json_tokener_success && tokener->char_offset == len) {
+	if (success && tokener->char_offset == len) {
 		// Parsed the whole string with success, JSON is valid!
 		json_tokener_free(tokener);
 		return NULL;
-	} else if (err == json_tokener_success) {
+	} else if (success) {
 		// Some of the end of the string was not parsed
 		err_message = "unexpected extra input";
 	}

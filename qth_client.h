@@ -58,13 +58,18 @@ typedef struct {
 	// Qth meta access timeout (ms)
 	int meta_timeout;
 	
-	// Value fetching timeouts (ms)
-	int property_timeout;
-	int event_timeout;
+	// Value setting/fetching timeouts (ms)
+	int get_timeout;
+	int set_timeout;
+	int delete_timeout;
+	int watch_timeout;
+	int send_timeout;
 	
-	// How many values to get before exiting
-	int property_count;
-	int event_count;
+	// How many values to get/set before exiting
+	int get_count;
+	int set_count;
+	int watch_count;
+	int send_count;
 	
 	// How should JSON be displayed
 	json_format_t json_format;
@@ -117,7 +122,15 @@ bool qth_is_directory_listing(json_object *dir);
 const char **qth_subdirectory_get_behaviours(json_object *dir, const char *subpath);
 bool qth_subdirectory_has_behaviour(json_object *dir, const char *subpath, const char *behaviour);
 char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int meta_timeout);
+char *qth_set_delete_or_send(MQTTClient *client, const char *topic, char *value,  bool is_property, int timeout);
 char *qth_set_property(MQTTClient *client, const char *topic, char *value, int timeout);
+char *qth_send_event(MQTTClient *client, const char *topic, char *value, int timeout);
+char *get_topic_path(const char *topic);
+const char *get_topic_name(const char *topic);
+int verify_topic(MQTTClient *client, const char *topic,
+                 const char *desired_behaviour, int meta_timeout);
+int get_topic_behaviour(MQTTClient *client, const char *topic,
+                        int meta_timeout, char **behaviour);
 
 int cmd_ls(MQTTClient *mqtt_client,
            const char *path,
@@ -125,5 +138,55 @@ int cmd_ls(MQTTClient *mqtt_client,
            bool ls_recursive,
            ls_format_t ls_format,
            json_format_t json_format);
+
+int cmd_set(MQTTClient *client,
+            const char *topic,
+            const char *value,
+            bool is_registering,
+            bool force,
+            int count,
+            int timeout,
+            int meta_timeout);
+
+int cmd_delete(MQTTClient *client,
+               const char *topic,
+               bool is_registering,
+               bool force,
+               int timeout,
+               int meta_timeout);
+
+int cmd_send(MQTTClient *client,
+             const char *topic,
+             const char *value,
+             bool is_registering,
+             bool force,
+             int count,
+             int timeout,
+             int meta_timeout);
+
+int cmd_get(MQTTClient *client,
+            const char *topic,
+            json_format_t json_format,
+            bool is_registering,
+            bool force,
+            int count,
+            int timeout,
+            int meta_timeout);
+
+int cmd_watch(MQTTClient *client,
+              const char *topic,
+              json_format_t json_format,
+              bool is_registering,
+              bool force,
+              int count,
+              int timeout,
+              int meta_timeout);
+
+int cmd_auto(MQTTClient *client,
+             const char *topic,
+             char **value,
+             value_source_t *value_source,
+             cmd_type_t *cmd_type,
+             int meta_timeout);
 
 #endif

@@ -226,6 +226,9 @@ char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int me
 					
 					char *err_out = alloced_cat("Couldn't parse directory listing: ", json_err);
 					free(json_err);
+					if (leaf_dir) {
+						free(leaf_dir);
+					}
 					MQTTClient_free(topic);
 					MQTTClient_freeMessage(&message);
 					return err_out;
@@ -255,6 +258,9 @@ char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int me
 					}
 					verified_parts[i] = true;
 				} else {
+					if (leaf_dir) {
+						free(leaf_dir);
+					}
 					MQTTClient_free(topic);
 					MQTTClient_freeMessage(&message);
 					return alloced_copy("Directory not found.");
@@ -276,25 +282,186 @@ char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int me
 
 
 /**
- * Set a Qth Property. Returns an error message if there is a problem (which
- * must be freed by the caller).
+ * Set a Qth property or send a Qth event. Returns an error message if there is
+ * a problem (which must be freed by the caller).
  */
-char *qth_set_property(MQTTClient *client, const char *topic, char *value, int timeout) {
+char *qth_set_delete_or_send(MQTTClient *client, const char *topic, char *value,  bool is_property, int timeout) {
 	MQTTClient_deliveryToken tok;
 	int status = MQTTClient_publish(client,
 	                                topic,
 	                                strlen(value), value,
 	                                2,  // QoS
-	                                1,  // Retain
+	                                is_property,  // Retain
 	                                &tok);
 	if (status == MQTTCLIENT_SUCCESS) {
 		status = MQTTClient_waitForCompletion(client, tok, timeout);
 		if (status == MQTTCLIENT_SUCCESS) {
 			return NULL;
 		} else {
-			return alloced_copy("Timeout while waiting for message to send.");
+			return alloced_copy("Timeout while waiting for MQTT message to send.");
 		}
 	} else {
-		return alloced_copy("Couldn't send message.");
+		return alloced_copy("Couldn't send MQTT message.");
+	}
+}
+
+
+/**
+ * Set a Qth Property. Returns an error message if there is a problem (which
+ * must be freed by the caller).
+ */
+char *qth_set_property(MQTTClient *client, const char *topic, char *value, int timeout) {
+	return qth_set_delete_or_send(client, topic, value, true, timeout);
+}
+
+/**
+ * Send a Qth event. Returns an error message if there is a problem (which must
+ * be freed by the caller).
+ */
+char *qth_send_event(MQTTClient *client, const char *topic, char *value, int timeout) {
+	return qth_set_delete_or_send(client, topic, value, false, timeout);
+}
+
+
+/**
+ * Extract the path a topic resides in, returning the path as a string to be
+ * freed by the caller.
+ */
+char *get_topic_path(const char *topic) {
+	const char *cur = topic;
+	const char *last_slash = topic - 1;
+	while (*cur) {
+		if (*cur == '/') {
+			last_slash = cur;
+		}
+		cur++;
+	}
+	
+	size_t path_len = (last_slash - topic) / sizeof(char);
+	char *path = malloc(path_len + 2);
+	if (last_slash == topic - 1) {
+		path[0] = '\0';
+	} else {
+		memcpy(path, topic, path_len + 1);
+		path[path_len + 1] = '\0';
+	}
+	
+	return path;
+}
+
+/**
+ * Get the name of a topic within its path. Returns a pointer into the provided
+ * string.
+ */
+const char *get_topic_name(const char *topic) {
+	const char *cur = topic;
+	const char *last_slash = topic - 1;
+	while (*cur) {
+		if (*cur == '/') {
+			last_slash = cur;
+		}
+		cur++;
+	}
+	
+	return last_slash + 1;
+}
+
+
+/**
+ * Check a topic exists and has the expected behaviour. Returns 0 if it does
+ * and non-zero (printing a message to stderr) if not successful.
+ */
+int verify_topic(MQTTClient *client, const char *topic,
+                 const char *desired_behaviour, int meta_timeout) {
+	char *path = get_topic_path(topic);
+	const char *name = get_topic_name(topic);
+	
+	char *dir = NULL;
+	char *err = qth_get_directory(client, path, &dir, meta_timeout);
+	free(path);
+	if (err) {
+		fprintf(stderr, "Error: %s\n", err);
+		free(err);
+		return 1;
+	}
+	
+	json_object *dir_obj = json_tokener_parse(dir);
+	free(dir);
+	
+	json_object *topic_obj;
+	if (!json_object_object_get_ex(dir_obj, name, &topic_obj)) {
+		json_object_put(dir_obj);
+		fprintf(stderr, "Error: Topic does not exist.\n");
+		return 1;
+	}
+	
+	bool has_behaviour = qth_subdirectory_has_behaviour(dir_obj, name, desired_behaviour);
+	json_object_put(dir_obj);
+	if (!has_behaviour) {
+		fprintf(stderr, "Error: Topic does not have behaviour '%s'.\n",
+		        desired_behaviour);
+		return 1;
+	}
+	
+	return 0;
+}
+
+
+/**
+ * Find out the behaviour of a topic. If the topic does not have a single
+ * unique non-directory behaviour (or does not exist), an error is printed on
+ * stdout and a non-zero value is returned. The behaviour type returned should
+ * be freed by the caller.
+ */
+int get_topic_behaviour(MQTTClient *client, const char *topic,
+                        int meta_timeout, char **behaviour) {
+	*behaviour = NULL;
+	
+	char *path = get_topic_path(topic);
+	const char *name = get_topic_name(topic);
+	
+	char *dir = NULL;
+	char *err = qth_get_directory(client, path, &dir, meta_timeout);
+	free(path);
+	if (err) {
+		fprintf(stderr, "Error: %s\n", err);
+		free(err);
+		return 1;
+	}
+	
+	json_object *dir_obj = json_tokener_parse(dir);
+	free(dir);
+	
+	json_object *topic_obj;
+	if (!json_object_object_get_ex(dir_obj, name, &topic_obj)) {
+		json_object_put(dir_obj);
+		fprintf(stderr, "Error: Topic does not exist.\n");
+		return 1;
+	}
+	
+	const char **behaviours = qth_subdirectory_get_behaviours(dir_obj, name);
+	const char **p = behaviours;
+	const char *best_behaviour = NULL;
+	while (*p) {
+		if (strcmp(*p, "DIRECTORY") != 0) {
+			if (best_behaviour == NULL) {
+				best_behaviour = *p;
+			} else {
+				json_object_put(dir_obj);
+				fprintf(stderr, "Error: Topic has more than one behaviour.\n");
+				return 1;
+			}
+		}
+		p++;
+	}
+	
+	if (best_behaviour == NULL) {
+		json_object_put(dir_obj);
+		fprintf(stderr, "Error: Topic is a directory.\n");
+		return 1;
+	} else {
+		*behaviour = alloced_copy(best_behaviour);
+		json_object_put(dir_obj);
+		return 0;
 	}
 }
