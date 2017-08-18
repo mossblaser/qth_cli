@@ -73,7 +73,7 @@ int cmd_set_delete_or_send(MQTTClient *client, const char *topic,
                            bool is_property, bool force,
                            int count, int timeout, int meta_timeout) {
 	// Verify that the type is as expected
-	if (!force) {
+	if (!force && !is_registering) {
 		char *desired_behaviour;
 		if (is_property) {
 			desired_behaviour = is_registering ? "PROPERTY-1:N" : "PROPERTY-N:1";
@@ -173,7 +173,7 @@ int cmd_get_or_watch(MQTTClient *client, const char *topic,
                      bool is_property, bool force,
                      int count, int timeout, int meta_timeout) {
 	// Verify that the type is as expected
-	if (!force) {
+	if (!force && !is_registering) {
 		char *desired_behaviour;
 		if (is_property) {
 			desired_behaviour = is_registering ? "PROPERTY-N:1" : "PROPERTY-1:N";

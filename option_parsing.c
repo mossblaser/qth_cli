@@ -30,6 +30,15 @@ void print_help(FILE *stream, const char *appname) {
 		"A utility for interacting with a Qth-compliant MQTT-based home \n"
 		"automation system.\n"
 		"\n"
+		"This utility implements several subcommands which perform various\n"
+		"actions on the Qth system. If no subcommand is given, the appropriate\n"
+		"command is guessed based on how the topic is registered.\n"
+		"\n"
+		"If a subcommand expects an optional VALUE, it will default to 'null'\n"
+		"unless the command is used with --register in which case values will\n"
+		"be read, one-per-line, from STDIN. To read values from STDIN for other\n"
+		"commands, use '-' for the topic on the commandline.\n"
+		"\n"
 		"optional arguments:\n"
 		"  -h --help             show this help message and exit\n"
 		"  -V --version          show the program's version number and exit\n"
@@ -66,13 +75,8 @@ void print_help(FILE *stream, const char *appname) {
 		"\n"
 		"optional arguments when used with get, set, watch or send:\n"
 		"  -c COUNT --count COUNT\n"
-		"                        If getting the value of a property or\n"
-		"                        directory, exits once the value is received\n"
-		"                        COUNT times. Defaults to 1 in this case or 0\n"
-		"                        (unlimited) if --register is used. If\n"
-		"                        watching an event, watch COUNT occurrences of\n"
-		"                        the event before exiting. In this case defaults\n"
-		"                        to 0 (unlimited).\n"
+		"                        The number of values or events to send/receive\n"
+		"                        before exiting.\n"
 		"  -1                    An alias for --count=1\n"
 		"  -r --register         Register the topic with the Qth registrar. The\n"
 		"                        following type of registration will be used:\n"
@@ -436,8 +440,14 @@ options_t argparse(int argc, char *argv[]) {
 		case CMD_TYPE_SET:
 		case CMD_TYPE_SEND:
 			if (optind >= argc) {
-				opts.value_source = VALUE_SOURCE_NULL;
-				opts.value = "null";
+				if (opts.register_topic) {
+					// If registering default to stdin since the command makes more sense
+					// to be long-running
+					opts.value_source = VALUE_SOURCE_STDIN;
+				} else {
+					opts.value_source = VALUE_SOURCE_NULL;
+					opts.value = "null";
+				}
 			} else if (strcmp(argv[optind], "-") == 0) {
 				opts.value_source = VALUE_SOURCE_STDIN;
 				optind++;
