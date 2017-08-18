@@ -8,6 +8,9 @@
 
 #define VERSION_STRING "v0.1"
 
+// QoS value to use for all commands
+#define QTH_QOS 2
+
 // The type of command entered on the command line.
 typedef enum {
 	CMD_TYPE_AUTO = 0,

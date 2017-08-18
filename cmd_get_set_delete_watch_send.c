@@ -186,7 +186,7 @@ int cmd_get_or_watch(MQTTClient *client, const char *topic,
 	}
 	
 	// Subscribe
-	int err = MQTTClient_subscribe(client, topic, 2);
+	int err = MQTTClient_subscribe(client, topic, QTH_QOS);
 	if (err != MQTTCLIENT_SUCCESS) {
 		fprintf(stderr, "Error: Could not subscribe to topic.\n");
 		return 1;

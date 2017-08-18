@@ -186,7 +186,7 @@ char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int me
 	// (and isn't a stale property).
 	int qos[depth];
 	for (size_t i = 0; i < depth; i++) {
-		qos[i] = 2;
+		qos[i] = QTH_QOS;
 	}
 	int mqtt_err = MQTTClient_subscribeMany(client, depth, ls_paths, qos);
 	if (mqtt_err != MQTTCLIENT_SUCCESS) {
@@ -290,7 +290,7 @@ char *qth_set_delete_or_send(MQTTClient *client, const char *topic, char *value,
 	int status = MQTTClient_publish(client,
 	                                topic,
 	                                strlen(value), value,
-	                                2,  // QoS
+	                                QTH_QOS,  // QoS
 	                                is_property,  // Retain
 	                                &tok);
 	if (status == MQTTCLIENT_SUCCESS) {
