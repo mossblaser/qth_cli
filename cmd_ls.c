@@ -10,10 +10,34 @@
 
 #include "qth_client.h"
 
+
 void print_ls_short(json_object *obj) {
 	json_object_object_foreach(obj, topic, value) {
 		(void)value;  // Unused
-		printf("%s\n", topic);
+		
+		// Check if topic is a directory or non-directory
+		bool is_directory = false;
+		bool is_non_directory = false;
+		const char **behaviours = qth_subdirectory_get_behaviours(obj, topic);
+		const char **p = behaviours;
+		while (*p) {
+			if (strcmp(*p, "DIRECTORY") == 0) {
+				is_directory = true;
+			} else {
+				is_non_directory = true;
+			}
+			p++;
+		}
+		free(behaviours);
+		
+		
+		// Print accordingly
+		if (is_directory) {
+			printf("%s/\n", topic);
+		}
+		if (is_non_directory) {
+			printf("%s\n", topic);
+		}
 	}
 }
 
@@ -23,7 +47,11 @@ void print_ls_long(json_object *obj) {
 		const char **behaviours = qth_subdirectory_get_behaviours(obj, topic);
 		const char **p = behaviours;
 		while (*p) {
-			printf("%s\t%s\n", *p, topic);
+			if (strcmp(*p, "DIRECTORY") == 0) {
+				printf("%s\t%s/\n", *p, topic);
+			} else {
+				printf("%s\t%s\n", *p, topic);
+			}
 			
 			p++;
 		}
