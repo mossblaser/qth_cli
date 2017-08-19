@@ -1,3 +1,7 @@
+################################################################################
+# Autocomplete for the Qth commandline tool
+################################################################################
+
 # Filter the output of --help to just a list of subcommands
 # Argument: the qth command name
 _qth_help_to_subcommands() {
