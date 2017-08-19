@@ -92,7 +92,7 @@ _qth() {
 						echo "$SUBDIR$PART "
 					fi
 				fi
-			done
+			done 2>&1 > /dev/null
 		fi
 	)"
 	
