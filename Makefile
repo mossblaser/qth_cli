@@ -1,3 +1,5 @@
+PREFIX = /usr/local
+
 SOURCES = main.c \
           qth.c \
           json_utils.c \
@@ -11,3 +13,10 @@ HEADERS = qth_client.h
 
 qth : $(SOURCES) $(HEADERS)
 	gcc -g -Wall -Werror -lm -lpaho-mqtt3c `pkg-config --libs --cflags json-c` -o qth $(SOURCES)
+
+clean :
+	rm -rf qth
+
+install : qth qth_autocomplete.sh
+	install qth $(PREFIX)/bin/
+	install qth_autocomplete.sh /etc/bash_completion.d/qth.sh
