@@ -42,8 +42,12 @@ void print_help(FILE *stream, const char *appname) {
 		"optional arguments:\n"
 		"  -h --help             show this help message and exit\n"
 		"  -V --version          show the program's version number and exit\n"
-		"  -H HOST --host HOST   set the hostname of the MQTT broker\n"
+		"  -H HOST --host HOST   set the hostname of the MQTT broker (defaults\n"
+		"                        to the value of the QTH_HOST environment\n"
+		"                        variable, or 'localhost' if not defined).\n"
 		"  -P PORT --port PORT   set the tcp port number of the MQTT broker\n"
+		"                        (defaults to the value of the QTH_PORT\n"
+		"                        environment variable, or 1883 if not defined).\n"
 		"  -K SECONDS --keep-alive SECONDS\n"
 		"                        set the MQTT keepalive interval\n"
 		"  -C CLIENT_ID --client-id CLIENT_ID\n"
@@ -122,11 +126,21 @@ void print_version(FILE *stream, const char *appname) {
 } while (0)
 
 options_t argparse(int argc, char *argv[]) {
+	char *default_mqtt_host = getenv("QTH_HOST");
+	if (!default_mqtt_host) {
+		default_mqtt_host = "localhost";
+	}
+	char *default_mqtt_port_str = getenv("QTH_PORT");
+	if (!default_mqtt_port_str) {
+		default_mqtt_port_str = "1883";
+	}
+	int default_mqtt_port = atoi(default_mqtt_port_str);
+	
 	// The options to use, initially set to defaults
 	options_t opts = {
 		CMD_TYPE_AUTO,  // cmd_type
-		"localhost",  // mqtt_port
-		1883,  // mqtt_port
+		default_mqtt_host,  // mqtt_host
+		default_mqtt_port,  // mqtt_port
 		10,  // mqtt_keep_alive
 		NULL,  // client_id
 		1000,  // meta_timeout
