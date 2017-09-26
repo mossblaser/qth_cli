@@ -92,9 +92,9 @@ _qth() {
 						echo "$SUBDIR$PART "
 					fi
 				fi
-			done 2>&1 > /dev/null
+			done
 		fi
-	)"
+	)" 2>&1 > /dev/null
 	
 	IFS="$(echo -en "\n\t")" COMPREPLY=( $(compgen -W "$COMPLETIONS" -- "$CUR_WORD") )
 	return 0
