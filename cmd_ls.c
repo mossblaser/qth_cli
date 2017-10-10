@@ -116,7 +116,7 @@ int cmd_ls(MQTTClient *mqtt_client,
 		if (ls_recursive) {
 			json_object_object_foreach(obj, part, value) {
 				(void)value;
-				if (qth_subdirectory_has_behaviour(obj, part, "DIRECTORY")) {
+				if (qth_subdirectory_has_behaviour(obj, part, "DIRECTORY", true)) {
 					// Create subdir path
 					size_t path_len = strlen(path);
 					size_t part_len = strlen(part);

@@ -89,11 +89,24 @@ const char **qth_subdirectory_get_behaviours(json_object *dir, const char *subpa
 
 /**
  * Return true if a given directory listing contains a particular subpath with
- * the specified behaviour.
+ * the specified behaviour. If 'strict' is false, only checks behaviour names
+ * up to the '-' (i.e. ignores differences in 'N:1' and '1:N').
  */
 bool qth_subdirectory_has_behaviour(json_object *dir,
                                     const char *subpath,
-                                    const char *behaviour) {
+                                    const char *behaviour,
+                                    bool strict) {
+	size_t behaviour_len;
+	if (strict) {
+		behaviour_len = strlen(behaviour) + 1;
+	} else {
+		behaviour_len = 0;
+		while (behaviour[behaviour_len] != '-' &&
+		       behaviour[behaviour_len] != '\0') {
+			behaviour_len++;
+		}
+	}
+	
 	const char **behaviours = qth_subdirectory_get_behaviours(dir, subpath);
 	if (!behaviours) {
 		return false;
@@ -101,7 +114,7 @@ bool qth_subdirectory_has_behaviour(json_object *dir,
 	
 	const char **p = behaviours;
 	while (*p) {
-		if (strcmp(*p, behaviour) == 0) {
+		if (strncmp(*p, behaviour, behaviour_len) == 0) {
 			free(behaviours);
 			return true;
 		}
@@ -246,7 +259,7 @@ char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int me
 					}
 				} else {
 					// Branch directory, make sure next subdirectory is listed
-					is_valid = qth_subdirectory_has_behaviour(obj, parts[i], "DIRECTORY");
+					is_valid = qth_subdirectory_has_behaviour(obj, parts[i], "DIRECTORY", true);
 				}
 				
 				json_object_put(obj);
@@ -368,11 +381,13 @@ const char *get_topic_name(const char *topic) {
 
 
 /**
- * Check a topic exists and has the expected behaviour. Returns 0 if it does
- * and non-zero (printing a message to stderr) if not successful.
+ * Check a topic exists and has the expected behaviour. If 'strict' is false,
+ * only checks up to the "-" in the behaviour, i.e. ignores the "N:1" or "1:N".
+ * Returns 0 if it does and non-zero (printing a message to stderr) if not
+ * successful.
  */
 int verify_topic(MQTTClient *client, const char *topic,
-                 const char *desired_behaviour, int meta_timeout) {
+                 const char *desired_behaviour, bool strict, int meta_timeout) {
 	char *path = get_topic_path(topic);
 	const char *name = get_topic_name(topic);
 	
@@ -395,7 +410,10 @@ int verify_topic(MQTTClient *client, const char *topic,
 		return 1;
 	}
 	
-	bool has_behaviour = qth_subdirectory_has_behaviour(dir_obj, name, desired_behaviour);
+	bool has_behaviour = qth_subdirectory_has_behaviour(dir_obj,
+	                                                    name,
+	                                                    desired_behaviour,
+	                                                    strict);
 	json_object_put(dir_obj);
 	if (!has_behaviour) {
 		fprintf(stderr, "Error: Topic does not have behaviour '%s'.\n",

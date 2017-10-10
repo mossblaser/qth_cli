@@ -77,6 +77,9 @@ typedef struct {
 	// How should JSON be displayed
 	json_format_t json_format;
 	
+	// Should we check 1:N or N:1 state matches our action?
+	bool strict;
+	
 	// Should topic type be ignored?
 	bool force;
 	
@@ -123,7 +126,7 @@ char *alloced_cat(const char *a, const char *b);
 
 bool qth_is_directory_listing(json_object *dir);
 const char **qth_subdirectory_get_behaviours(json_object *dir, const char *subpath);
-bool qth_subdirectory_has_behaviour(json_object *dir, const char *subpath, const char *behaviour);
+bool qth_subdirectory_has_behaviour(json_object *dir, const char *subpath, const char *behaviour, bool strict);
 char *qth_get_directory(MQTTClient *client, const char *path, char **dir, int meta_timeout);
 char *qth_set_delete_or_send(MQTTClient *client, const char *topic, char *value,  bool is_property, int timeout);
 char *qth_set_property(MQTTClient *client, const char *topic, char *value, int timeout);
@@ -131,7 +134,7 @@ char *qth_send_event(MQTTClient *client, const char *topic, char *value, int tim
 char *get_topic_path(const char *topic);
 const char *get_topic_name(const char *topic);
 int verify_topic(MQTTClient *client, const char *topic,
-                 const char *desired_behaviour, int meta_timeout);
+                 const char *desired_behaviour, bool strict, int meta_timeout);
 int get_topic_behaviour(MQTTClient *client, const char *topic,
                         int meta_timeout, char **behaviour);
 
@@ -146,6 +149,7 @@ int cmd_set(MQTTClient *client,
             const char *topic,
             const char *value,
             bool is_registering,
+            bool strict,
             bool force,
             int count,
             int timeout,
@@ -154,6 +158,7 @@ int cmd_set(MQTTClient *client,
 int cmd_delete(MQTTClient *client,
                const char *topic,
                bool is_registering,
+               bool strict,
                bool force,
                int timeout,
                int meta_timeout);
@@ -162,6 +167,7 @@ int cmd_send(MQTTClient *client,
              const char *topic,
              const char *value,
              bool is_registering,
+             bool strict,
              bool force,
              int count,
              int timeout,
@@ -171,6 +177,7 @@ int cmd_get(MQTTClient *client,
             const char *topic,
             json_format_t json_format,
             bool is_registering,
+            bool strict,
             bool force,
             int count,
             int timeout,
@@ -180,12 +187,14 @@ int cmd_watch(MQTTClient *client,
               const char *topic,
               json_format_t json_format,
               bool is_registering,
+              bool strict,
               bool force,
               int count,
               int timeout,
               int meta_timeout);
 
 int cmd_auto(MQTTClient *client,
+             bool strict,
              const char *topic,
              char **value,
              value_source_t *value_source,

@@ -15,6 +15,7 @@
 
 
 int cmd_auto(MQTTClient *client,
+             bool strict,
              const char *topic,
              char **value,
              value_source_t *value_source,
@@ -41,9 +42,18 @@ int cmd_auto(MQTTClient *client,
 		return 1;
 	}
 	
-	// Amend the value and value_type if required
+	// When not in strict mode, choose whether to get or set properties based
+	// purely on whether a value is provided.
+	if (!strict) {
+		if (*cmd_type == CMD_TYPE_SET && *value_source == VALUE_SOURCE_NONE) {
+			*cmd_type = CMD_TYPE_GET;
+		} else if (*cmd_type == CMD_TYPE_GET && *value_source != VALUE_SOURCE_NONE) {
+			*cmd_type = CMD_TYPE_SET;
+		}
+	}
+	
+	// Default to 'null' value for writeable commands.
 	if (*cmd_type == CMD_TYPE_SET || *cmd_type == CMD_TYPE_SEND) {
-		// Default to 'null' value for writeable commands
 		if (*value_source == VALUE_SOURCE_NONE) {
 			*value_source = VALUE_SOURCE_NULL;
 			*value = "null";

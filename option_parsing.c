@@ -71,6 +71,12 @@ void print_help(FILE *stream, const char *appname) {
 		"  -q --quiet            do not output received values (output empty\n"
 		"                        lines instead)\n"
 		"\n"
+		"optional arguments when used with no subcommand or the get, set, \n"
+		"delete, watch or send subcommands:\n"
+		"  -s --strict           Only allow setting/deleting/sending N:1\n"
+		"                        properties and events (or 1:N if registering)\n"
+		"                        and getting/watching 1:N properties and events\n"
+		"                        (or N:1 if registering).\n"
 		"optional arguments when used with get, set, delete, watch or send:\n"
 		"  -f --force            Treat this topic as a property or event (for\n"
 		"                        get, set or delete and watch or send\n"
@@ -154,6 +160,7 @@ options_t argparse(int argc, char *argv[]) {
 		0,  // watch_count;
 		1,  // send_count;
 		JSON_FORMAT_SINGLE_LINE,  // json_format
+		false,  // strict
 		false,  // force
 		false,  // register_topic
 		"Created on the command-line.",  // description
@@ -199,7 +206,7 @@ options_t argparse(int argc, char *argv[]) {
 	// Skip command type and process remaining arguments with getopt
 	optind = opts.cmd_type == CMD_TYPE_AUTO ? 1 : 2;
 	
-	const char *optstring = "hVH:P:K:T:t:c:1pvqfrC:d:U:DRlj";
+	const char *optstring = "hVH:P:K:T:t:c:1pvqsfrC:d:U:DRlj";
 	
 	struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -213,6 +220,7 @@ options_t argparse(int argc, char *argv[]) {
 		{"pretty-print", no_argument, NULL, 'p'},
 		{"verbatim", no_argument, NULL, 'v'},
 		{"quiet", no_argument, NULL, 'q'},
+		{"strict", no_argument, NULL, 's'},
 		{"force", no_argument, NULL, 'f'},
 		{"register", no_argument, NULL, 'r'},
 		{"description", required_argument, NULL, 'd'},
@@ -320,6 +328,22 @@ options_t argparse(int argc, char *argv[]) {
 				opts.json_format = JSON_FORMAT_QUIET;
 				break;
 			
+			case 's':  // --strict
+				if (!(opts.cmd_type == CMD_TYPE_AUTO ||
+				      opts.cmd_type == CMD_TYPE_GET ||
+				      opts.cmd_type == CMD_TYPE_SET ||
+				      opts.cmd_type == CMD_TYPE_DELETE ||
+				      opts.cmd_type == CMD_TYPE_WATCH ||
+				      opts.cmd_type == CMD_TYPE_SEND)) {
+					ARGPARSE_ERROR("'--strict' can only be used with "
+					               "get, set, delete, watch or send.");
+				}
+				if (opts.force) {
+					ARGPARSE_ERROR("'--strict' may not be used with '--force'");
+				}
+				opts.strict = true;
+				break;
+			
 			case 'f':  // --force
 				if (!(opts.cmd_type == CMD_TYPE_GET ||
 				      opts.cmd_type == CMD_TYPE_SET ||
@@ -328,6 +352,9 @@ options_t argparse(int argc, char *argv[]) {
 				      opts.cmd_type == CMD_TYPE_SEND)) {
 					ARGPARSE_ERROR("'--force' can only be used with "
 					               "get, set, delete, watch or send.");
+				}
+				if (opts.strict) {
+					ARGPARSE_ERROR("'--force' may not be used with '--strict'");
 				}
 				opts.force = true;
 				break;

@@ -70,17 +70,17 @@ char *getline_and_keepalive(void) {
 
 int cmd_set_delete_or_send(MQTTClient *client, const char *topic,
                            const char *value, bool is_registering,
-                           bool is_property, bool force,
+                           bool is_property, bool strict, bool force,
                            int count, int timeout, int meta_timeout) {
 	// Verify that the type is as expected
 	if (!force && !is_registering) {
 		char *desired_behaviour;
 		if (is_property) {
-			desired_behaviour = is_registering ? "PROPERTY-1:N" : "PROPERTY-N:1";
+			desired_behaviour = strict ? "PROPERTY-N:1" : "PROPERTY";
 		} else {
-			desired_behaviour = is_registering ? "EVENT-1:N" : "EVENT-N:1";
+			desired_behaviour = strict ? "EVENT-N:1" : "EVENT";
 		}
-		if (verify_topic(client, topic, desired_behaviour, meta_timeout)) {
+		if (verify_topic(client, topic, desired_behaviour, strict, meta_timeout)) {
 			return 1;
 		}
 	}
@@ -134,23 +134,25 @@ int cmd_set(MQTTClient *client,
             const char *topic,
             const char *value,
             bool is_registering,
+            bool strict,
             bool force,
             int count,
             int timeout,
             int meta_timeout) {
 	return cmd_set_delete_or_send(client, topic, value,
-	                              is_registering, true, force,
+	                              is_registering, true, strict, force,
 	                              count, timeout, meta_timeout);
 }
 
 int cmd_delete(MQTTClient *client,
                const char *topic,
                bool is_registering,
+               bool strict,
                bool force,
                int timeout,
                int meta_timeout) {
 	return cmd_set_delete_or_send(client, topic, "",
-	                              is_registering, true, force,
+	                              is_registering, true, strict, force,
 	                              1, timeout, meta_timeout);
 }
 
@@ -158,29 +160,30 @@ int cmd_send(MQTTClient *client,
              const char *topic,
              const char *value,
              bool is_registering,
+             bool strict,
              bool force,
              int count,
              int timeout,
              int meta_timeout) {
 	return cmd_set_delete_or_send(client, topic, value,
-	                              is_registering, false, force,
+	                              is_registering, false, strict, force,
 	                              count, timeout, meta_timeout);
 }
 
 
 int cmd_get_or_watch(MQTTClient *client, const char *topic,
                      json_format_t json_format, bool is_registering,
-                     bool is_property, bool force,
+                     bool is_property, bool strict, bool force,
                      int count, int timeout, int meta_timeout) {
 	// Verify that the type is as expected
 	if (!force && !is_registering) {
 		char *desired_behaviour;
 		if (is_property) {
-			desired_behaviour = is_registering ? "PROPERTY-N:1" : "PROPERTY-1:N";
+			desired_behaviour = strict ? "PROPERTY-1:N" : "PROPERTY";
 		} else {
-			desired_behaviour = is_registering ? "EVENT-N:1" : "EVENT-1:N";
+			desired_behaviour = strict ? "EVENT-1:N" : "EVENT";
 		}
-		if (verify_topic(client, topic, desired_behaviour, meta_timeout)) {
+		if (verify_topic(client, topic, desired_behaviour, strict, meta_timeout)) {
 			return 1;
 		}
 	}
@@ -286,14 +289,14 @@ int cmd_get_or_watch(MQTTClient *client, const char *topic,
 
 int cmd_get(MQTTClient *client, const char *topic,
             json_format_t json_format, bool is_registering,
-            bool force, int count, int timeout, int meta_timeout) {
+            bool strict, bool force, int count, int timeout, int meta_timeout) {
 	return cmd_get_or_watch(client, topic, json_format, is_registering, true,
-	                        force, count, timeout, meta_timeout);
+	                        strict, force, count, timeout, meta_timeout);
 }
 
 int cmd_watch(MQTTClient *client, const char *topic,
               json_format_t json_format, bool is_registering,
-              bool force, int count, int timeout, int meta_timeout) {
+              bool strict, bool force, int count, int timeout, int meta_timeout) {
 	return cmd_get_or_watch(client, topic, json_format, is_registering, false,
-	                        force, count, timeout, meta_timeout);
+	                        strict, force, count, timeout, meta_timeout);
 }

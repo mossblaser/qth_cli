@@ -209,6 +209,7 @@ int main(int argc, char *argv[]) {
 	// If automatic, work out what command is needed.
 	if (opts.cmd_type == CMD_TYPE_AUTO) {
 		int retval = cmd_auto(mqtt_client,
+	                        opts.strict,
 	                        opts.topic,
 	                        &opts.value,
 	                        &opts.value_source,
@@ -239,6 +240,7 @@ int main(int argc, char *argv[]) {
 			                 opts.topic,
 			                 opts.json_format,
 			                 opts.register_topic,
+			                 opts.strict,
 			                 opts.force,
 			                 opts.get_count,
 			                 opts.get_timeout,
@@ -250,6 +252,7 @@ int main(int argc, char *argv[]) {
 			                 opts.topic,
 			                 opts.value,
 			                 opts.register_topic,
+			                 opts.strict,
 			                 opts.force,
 			                 opts.set_count,
 			                 opts.set_timeout,
@@ -260,6 +263,7 @@ int main(int argc, char *argv[]) {
 			retval = cmd_delete(mqtt_client,
 			                    opts.topic,
 			                    opts.register_topic,
+			                    opts.strict,
 			                    opts.force,
 			                    opts.set_timeout,
 			                    opts.meta_timeout);
@@ -270,6 +274,7 @@ int main(int argc, char *argv[]) {
 			                   opts.topic,
 			                   opts.json_format,
 			                   opts.register_topic,
+			                   opts.strict,
 			                   opts.force,
 			                   opts.watch_count,
 			                   opts.watch_timeout,
@@ -281,6 +286,7 @@ int main(int argc, char *argv[]) {
 			                  opts.topic,
 			                  opts.value,
 			                  opts.register_topic,
+			                  opts.strict,
 			                  opts.force,
 			                  opts.send_count,
 			                  opts.send_timeout,
