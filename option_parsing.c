@@ -83,11 +83,17 @@ void print_help(FILE *stream, const char *appname) {
 		"                        respectively) regardless of how it has been\n"
 		"                        registered.\n"
 		"\n"
-		"optional arguments when used with get, set, watch or send:\n"
+		"optional arguments when used with no subcommand or the get, set, watch\n"
+		"or send subcommands:\n"
 		"  -c COUNT --count COUNT\n"
 		"                        The number of values or events to send/receive\n"
-		"                        before exiting.\n"
+		"                        before exiting. If set to any value except '1',\n"
+		"                        also sets --timeout to 0 (no timeout). Override\n"
+		"                        this by setting --timeout in a later argument.\n"
+		"  -0                    An alias for --count=0\n"
 		"  -1                    An alias for --count=1\n"
+		"\n"
+		"optional arguments when used with get, set, watch or send:\n"
 		"  -r --register         Register the topic with the Qth registrar. The\n"
 		"                        following type of registration will be used:\n"
 		"                            Command  Type Registered\n"
@@ -206,7 +212,7 @@ options_t argparse(int argc, char *argv[]) {
 	// Skip command type and process remaining arguments with getopt
 	optind = opts.cmd_type == CMD_TYPE_AUTO ? 1 : 2;
 	
-	const char *optstring = "hVH:P:K:T:t:c:1pvqsfrC:d:U:DRlj";
+	const char *optstring = "hVH:P:K:T:t:c:01pvqsfrC:d:U:DRlj";
 	
 	struct option longopts[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -295,6 +301,43 @@ options_t argparse(int argc, char *argv[]) {
 					= send_arg_count
 					= send_stdin_count
 					= atoi(optarg);
+				
+				// Default to infinate timeout when infinate count supplied.
+				if (atoi(optarg) != 1) {
+					opts.set_timeout
+						= opts.delete_timeout
+						= opts.watch_timeout
+						= opts.send_timeout
+						= get_unregistered_timeout
+						= get_registered_timeout
+						= 0;
+				}
+				break;
+			
+			case '0':  // -0
+				if (!(opts.cmd_type == CMD_TYPE_AUTO ||
+				      opts.cmd_type == CMD_TYPE_SET ||
+				      opts.cmd_type == CMD_TYPE_GET ||
+				      opts.cmd_type == CMD_TYPE_WATCH ||
+				      opts.cmd_type == CMD_TYPE_SEND)) {
+					ARGPARSE_ERROR("'-1' can only be used with "
+					               "get, set, watch or send.");
+				}
+				opts.watch_count
+					= get_unregistered_count
+					= get_registered_count
+					= set_arg_count
+					= set_stdin_count
+					= send_arg_count
+					= send_stdin_count
+					= 0;
+				opts.set_timeout
+					= opts.delete_timeout
+					= opts.watch_timeout
+					= opts.send_timeout
+					= get_unregistered_timeout
+					= get_registered_timeout
+					= 0;
 				break;
 			
 			case '1':  // -1
