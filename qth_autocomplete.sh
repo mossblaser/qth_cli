@@ -51,8 +51,19 @@ _qth_to_dirname() {
 _qth() {
 	CMD="${COMP_WORDS[0]}"
 	SUB_CMD="$(echo -n "${COMP_WORDS[1]}" | grep -E '^[a-zA-Z0-9]+$')"
-	CUR_WORD="${COMP_WORDS[COMP_CWORD]}"
-	PRV_WORD="${COMP_WORDS[COMP_CWORD-1]}"
+	
+	# Truncate everything past the cursor and just get the pre-cursor part of the
+	# current word.
+	# XXX: This implementation is just made of awful hack since it doesn't seem
+	# to be easy to get the cursor position within the current word...
+	IFS=" " read -a COMP_WORDS_TRUNC <<< "${COMP_LINE:0:COMP_POINT}"
+	if [ -n "${COMP_WORDS[COMP_CWORD]}" ]; then
+		CUR_WORD="${COMP_WORDS_TRUNC[-1]}"
+	else
+		# Special case: the above fails since if the current word is empty the word
+		# will be not appear in the array.
+		CUR_WORD=""
+	fi
 	
 	HELP_STRING="$("$CMD" --help)"
 	
@@ -78,7 +89,7 @@ _qth() {
 			
 			# If not typing an option, try completing with topic names
 			SUBDIR="$(_qth_to_dirname "$CUR_WORD")"
-			"$CMD" ls --long "$SUBDIR" | sed -nre 's/^('"$BEHAVIOUR"')\t(.*)$/\2/p' | while read PART; do
+			("$CMD" ls --long "$SUBDIR" 2>/dev/null) | sed -nre 's/^('"$BEHAVIOUR"')\t(.*)$/\2/p' | while read PART; do
 				LAST_CHAR="${PART:$((${#PART}-1)):1}"
 				if [ "$LAST_CHAR" = "/" ]; then
 					# List directories (for all types of commands)
