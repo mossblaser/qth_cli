@@ -302,12 +302,9 @@ options_t argparse(int argc, char *argv[]) {
 					= send_stdin_count
 					= atoi(optarg);
 				
-				// Default to infinate timeout when infinate count supplied.
+				// Default to infinate timeout when non-one count supplied.
 				if (atoi(optarg) != 1) {
-					opts.set_timeout
-						= opts.delete_timeout
-						= opts.watch_timeout
-						= opts.send_timeout
+					opts.watch_timeout
 						= get_unregistered_timeout
 						= get_registered_timeout
 						= 0;
@@ -320,7 +317,7 @@ options_t argparse(int argc, char *argv[]) {
 				      opts.cmd_type == CMD_TYPE_GET ||
 				      opts.cmd_type == CMD_TYPE_WATCH ||
 				      opts.cmd_type == CMD_TYPE_SEND)) {
-					ARGPARSE_ERROR("'-1' can only be used with "
+					ARGPARSE_ERROR("'-0' can only be used with "
 					               "get, set, watch or send.");
 				}
 				opts.watch_count
@@ -331,10 +328,7 @@ options_t argparse(int argc, char *argv[]) {
 					= send_arg_count
 					= send_stdin_count
 					= 0;
-				opts.set_timeout
-					= opts.delete_timeout
-					= opts.watch_timeout
-					= opts.send_timeout
+				opts.watch_timeout
 					= get_unregistered_timeout
 					= get_registered_timeout
 					= 0;
