@@ -71,11 +71,8 @@ _qth() {
 			BEHAVIOUR="[^\t]+"
 			if echo "${COMP_WORDS[@]}" | grep -qvE '([-][^-f ]*f[^- ]*|--force)'; then
 				case "$SUB_CMD" in
-					get) BEHAVIOUR="DIRECTORY|PROPERTY-1:N" ;;
-					set) BEHAVIOUR="DIRECTORY|PROPERTY-N:1" ;;
-					delete) BEHAVIOUR="DIRECTORY|PROPERTY-N:1" ;;
-					watch) BEHAVIOUR="DIRECTORY|EVENT-1:N" ;;
-					send) BEHAVIOUR="DIRECTORY|EVENT-N:1" ;;
+					get|set|delete) BEHAVIOUR="DIRECTORY|PROPERTY-1:N|PROPERTY-N:1" ;;
+					watch|send) BEHAVIOUR="DIRECTORY|EVENT-1:N|EVENT-N:1" ;;
 				esac
 			fi
 			
