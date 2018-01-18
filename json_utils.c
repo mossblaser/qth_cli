@@ -204,10 +204,10 @@ char *json_reformat(const char *in_str, int format) {
 char *json_to_format(const char *in_str, json_format_t json_format) {
 	switch (json_format) {
 		case JSON_FORMAT_SINGLE_LINE:
-			return json_reformat(in_str, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOZERO);
+			return json_reformat(in_str, JSON_C_TO_STRING_NOSLASHESCAPE | JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOZERO);
 		
 		case JSON_FORMAT_PRETTY:
-			return json_reformat(in_str, JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOZERO);
+			return json_reformat(in_str, JSON_C_TO_STRING_NOSLASHESCAPE | JSON_C_TO_STRING_PRETTY | JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOZERO);
 		
 		case JSON_FORMAT_VERBATIM:
 			return alloced_copy(in_str);
