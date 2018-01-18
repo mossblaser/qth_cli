@@ -265,7 +265,8 @@ int cmd_get_or_watch(MQTTClient *client, const char *topic,
 		
 		// Output the received message
 		char *out = json_to_format(payload, json_format);
-		printf("%s\n", out);
+		fprintf(stdout, "%s\n", out);
+		fflush(stdout);
 		free(out);
 		
 		// Clean up

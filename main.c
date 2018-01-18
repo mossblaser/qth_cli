@@ -147,6 +147,9 @@ char *get_registration_msg(const char *topic, const char *description,
 
 
 int main(int argc, char *argv[]) {
+	setlinebuf(stdin);
+	setlinebuf(stdout);
+	
 	options_t opts = argparse(argc, argv);
 	
 	// Use a random client ID if required
