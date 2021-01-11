@@ -18,5 +18,5 @@ clean :
 	rm -rf qth
 
 install : qth qth_autocomplete.sh
-	install qth $(PREFIX)/bin/
-	install qth_autocomplete.sh /etc/bash_completion.d/qth.sh
+	install qth $(DESTDIR)$(PREFIX)/bin/
+	install qth_autocomplete.sh $(DESTDIR)/etc/bash_completion.d/qth.sh
