@@ -2,7 +2,6 @@
  * Implementation of the automatic-mode command.
  */
 
-#include <stropts.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/select.h>

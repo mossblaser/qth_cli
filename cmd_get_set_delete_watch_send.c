@@ -2,7 +2,6 @@
  * Implementation of the get, set, delete, watch and send commands.
  */
 
-#include <stropts.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/select.h>
