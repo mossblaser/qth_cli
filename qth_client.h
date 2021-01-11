@@ -6,7 +6,7 @@
 #include "json.h"
 #include "MQTTClient.h"
 
-#define VERSION_STRING "v0.3.3"
+#define VERSION_STRING "v0.3.4"
 
 // QoS value to use for all commands
 #define QTH_QOS 2
